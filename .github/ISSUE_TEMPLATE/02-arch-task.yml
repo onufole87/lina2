@@ -1,0 +1,68 @@
+name: Architecture Task
+description: Technical design for a Story. Owned by Architect.
+title: "[Arch] "
+labels: ["type/arch-task", "needs/design", "role/architect"]
+body:
+  - type: input
+    id: parent-story
+    attributes:
+      label: Parent Story
+      description: Issue number of the User Story this design serves (e.g. #42)
+      placeholder: "#"
+    validations:
+      required: true
+
+  - type: textarea
+    id: approach
+    attributes:
+      label: Technical Approach
+      description: High-level design. Why this approach over alternatives considered.
+    validations:
+      required: true
+
+  - type: textarea
+    id: components-affected
+    attributes:
+      label: Components Affected
+      description: Files, modules, or services this change touches
+    validations:
+      required: true
+
+  - type: textarea
+    id: data-model
+    attributes:
+      label: Data Model Changes
+      description: New tables, columns, schema changes. Migration required?
+
+  - type: textarea
+    id: api-contract
+    attributes:
+      label: API Contract Changes
+      description: New endpoints, modified responses, breaking changes
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and Trade-offs
+      description: What could go wrong, what's deferred, what assumptions are made
+    validations:
+      required: true
+
+  - type: textarea
+    id: subtasks
+    attributes:
+      label: Sub-task Breakdown
+      description: Eng Subtasks to be created from this design (will be linked as sub-issues)
+      placeholder: |
+        - [ ] Subtask 1: ...
+        - [ ] Subtask 2: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: test-strategy
+    attributes:
+      label: Test Strategy
+      description: What kinds of tests are expected. QA uses this to plan coverage.
+    validations:
+      required: true

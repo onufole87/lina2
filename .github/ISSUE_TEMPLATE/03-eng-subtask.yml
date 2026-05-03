@@ -1,0 +1,52 @@
+name: Engineering Subtask
+description: A single implementation unit. Created by Architect, picked up by Engineer.
+title: "[Eng] "
+labels: ["type/eng-subtask", "needs/implementation", "role/engineer"]
+body:
+  - type: input
+    id: parent-arch-task
+    attributes:
+      label: Parent Arch Task
+      description: Issue number of the Arch Task this implements (e.g. #43)
+      placeholder: "#"
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: What to Implement
+      description: Concrete, unambiguous description of what needs to be coded
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: How "done" is verified. Should be checkable by automated tests where possible.
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: files-expected
+    attributes:
+      label: Files Expected to Change
+      description: Best-guess list of files that will be created or modified
+
+  - type: textarea
+    id: test-requirements
+    attributes:
+      label: Test Requirements
+      description: Specific tests that must pass. References test strategy from parent Arch Task.
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Implementation Notes
+      description: Hints, gotchas, or constraints from the Architect

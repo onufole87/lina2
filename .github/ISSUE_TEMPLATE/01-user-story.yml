@@ -1,0 +1,48 @@
+name: User Story
+description: A user-facing capability with acceptance criteria. Owned by BA.
+title: "[Story] "
+labels: ["type/story", "needs/refinement", "role/ba"]
+body:
+  - type: textarea
+    id: user-story
+    attributes:
+      label: User Story
+      description: As a [persona], I want [capability], so that [benefit]
+      placeholder: |
+        As an analyst,
+        I want to filter the watchlist by sector,
+        so that I can focus my review on one industry at a time.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Gherkin-style scenarios. Each must be independently verifiable.
+      placeholder: |
+        Scenario: Filter watchlist by single sector
+          Given the watchlist contains tickers from multiple sectors
+          When the user selects "Technology" from the sector filter
+          Then only Technology tickers are shown
+          And the count badge updates to reflect the filtered total
+    validations:
+      required: true
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of Scope
+      description: What this story is NOT responsible for. Prevents scope creep.
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Other issues, services, or decisions this story depends on
+
+  - type: textarea
+    id: open-questions
+    attributes:
+      label: Open Questions for Owner
+      description: Anything BA flagged for Owner to decide before design starts

@@ -1,119 +1,136 @@
 # Agentic SDLC Workflow
 
-This document is the shared source of truth for the development workflow on this project. All agents (BA, Architect, Engineer, QA) and the Owner read it as the authoritative process spec.
+Source of truth for how lina2 is built. Read by all agents (PO, Architect, Engineer, QA) and referenced by the Owner.
 
-## Roles
-
-### Owner (Human)
-
-- Defines high-level goals
-- Approves at three gates: post-BA refinement, post-Architect design, pre-merge review
-- Resolves Open Questions raised by agents
-- Has final say on prioritisation
-- Reviews tone of agent outputs and corrects systemic issues by updating role prompts
-
-### BA Agent (Claude Project)
-
-- Reads requirements from Owner in chat
-- Produces User Stories with Gherkin acceptance criteria
-- Identifies Open Questions for Owner before declaring a Story ready for design
-- Creates issues using the User Story template
-- Sets initial Priority and links to parent Epic if one exists
-
-### Architect Agent (Claude Project)
-
-- Reads approved Stories
-- Produces Arch Task with technical approach, components affected, data model and API changes, risks
-- Breaks Arch Task into Eng Subtasks (linked as GitHub sub-issues)
-- Creates issues using the Architecture Task and Engineering Subtask templates
-- Specifies Test Strategy that QA will use to plan coverage
-
-### Engineer (Claude Code)
-
-- Picks up Eng Subtasks marked `needs/implementation` and `Ready for Dev`
-- Creates branch named `feature/<issue-number>-<short-slug>`
-- Implements per the Eng Subtask, runs tests locally
-- Opens PR linking the Eng Subtask via "Closes #N" syntax
-- PR description follows `PULL_REQUEST_TEMPLATE.md`
-
-### QA Agent (Claude Project)
-
-- Reviews open PRs
-- Verifies acceptance criteria from the linked Eng Subtask
-- Adds missing tests where coverage is insufficient
-- Posts findings as PR comments
-- Approves or requests changes via PR review
-
-## Issue Lifecycle
+## Architecture Overview
 
 ```
-Backlog
-   ↓ (Owner triages)
-Refining          ← BA agent works here
-   ↓
-Ready for Design  ← Owner approval gate 1
-   ↓
-In Design         ← Architect agent works here
-   ↓
-Ready for Dev     ← Owner approval gate 2
-   ↓
-In Dev            ← Engineer works here
-   ↓ (PR opened)
-In Review         ← Owner reviews
-   ↓
-In QA             ← QA agent verifies
-   ↓ (merge)      ← Owner approval gate 3
+Owner (human)
+    │
+    │  1. high-level ask in chat
+    ▼
+PO Agent (Claude Project: "lina2 — PO")
+    │
+    │  2. produces requirements/<name>.md, committed via PR
+    ▼
+Architect (Claude Code: /architect <file>)
+    │
+    │  3. creates GitHub issues: 1 Story per User Story
+    │     1 Arch Task per Story with technical design
+    │     N Eng Subtasks per Arch Task
+    │     [Owner approves at gate 2]
+    ▼
+Engineer (Claude Code: /engineer <issue-number>)
+    │
+    │  4. branches, codes, commits, opens PR
+    │     [Owner reviews PR]
+    ▼
+QA (Claude Code: /qa <pr-number>)
+    │
+    │  5. reviews diff, verifies acceptance criteria,
+    │     suggests/adds tests, posts findings
+    │     [Owner approves at gate 3 and merges]
+    ▼
 Done
 ```
 
-`Blocked` is reachable from any state. Use the `blocked` label and document the blocker in the issue.
+## Roles
 
-## Branching
+### Owner (human)
+
+You. Defines high-level goals, approves at three gates, resolves Open Questions raised by agents, has final say on prioritisation, merges PRs.
+
+### PO Agent (Claude Project: "lina2 — PO")
+
+A claude.ai Project with the PO system prompt and shared knowledge files. Produces a structured `requirements/<name>.md` file by chatting with the Owner. Does not write to GitHub directly.
+
+### Architect (Claude Code, /architect command)
+
+A Claude Code session invoked with `/architect requirements/<name>.md`. Reads the requirement, creates a Story issue per User Story, drafts an Arch Task with technical design and risks, splits into Eng Subtasks, applies labels. Has `gh` CLI access.
+
+### Engineer (Claude Code, /engineer command)
+
+A Claude Code session invoked with `/engineer <issue-number>` for an Eng Subtask. Creates a feature branch, implements per the subtask spec, commits, pushes, opens a PR. Has full repo write access.
+
+### QA (Claude Code, /qa command)
+
+A Claude Code session invoked with `/qa <pr-number>`. Reads the PR diff, verifies acceptance criteria from the linked Eng Subtask, runs tests, suggests or adds missing tests, posts findings as PR review comments.
+
+## Owner Approval Gates
+
+Three gates. Owner must explicitly approve before the next phase runs.
+
+| Gate | When | What Owner reviews |
+|---|---|---|
+| Gate 1 | After PO drafts requirement | The `requirements/*.md` file before Architect runs on it |
+| Gate 2 | After Architect creates issues | The Story + Arch Task + Eng Subtasks in GitHub before Engineer picks them up |
+| Gate 3 | After QA reviews PR | The PR with QA findings before squash-merge |
+
+## Issue Lifecycle (Project Status)
+
+```
+Backlog → Refining → Ready for Design → In Design → Ready for Dev →
+In Dev → In Review → In QA → Done
+```
+
+`Blocked` is reachable from any state.
+
+| Status | Set when | Set by |
+|---|---|---|
+| Backlog | Issue created | Auto (Project workflow) |
+| Refining | PO is drafting in chat | (Pre-issue stage; tracked in chat, not on issue) |
+| Ready for Design | Requirement doc merged, ready for Architect | Owner |
+| In Design | `/architect` running | Architect (label transition) |
+| Ready for Dev | Architect done, Eng Subtasks created | Architect |
+| In Dev | `/engineer` running, branch open | Engineer (label transition) |
+| In Review | PR opened, awaiting Owner / QA | Engineer |
+| In QA | `/qa` running on the PR | QA |
+| Done | PR merged | Auto (Project workflow on PR merge) |
+
+## Branching, Commits, PRs
+
+See `BRANCH_AND_PR_CONVENTIONS.md`.
 
 - `main` is the only long-lived branch
-- All work happens on `feature/<issue-number>-<short-slug>` branches
-- Branches are deleted after merge
-- Conventional Commits: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`
-- Commit messages reference the issue: `feat: add sector filter (closes #42)`
-
-## Pull Requests
-
-- One Eng Subtask = one PR (no big-bang PRs)
-- PR description follows `PULL_REQUEST_TEMPLATE.md`
-- CI must pass before review (once CI exists in Phase 3)
-- Owner approval required to merge
+- Feature branches: `feature/<issue-number>-<short-slug>`
+- Conventional Commits
 - Squash merge into `main`
+- One Eng Subtask = one PR
 
-## Definition of Done
+## Definition of Done (per Story)
 
-A Story is Done when:
-
-1. All Eng Subtasks merged
-2. All acceptance criteria from the original Story verified by QA
-3. Test coverage meets project threshold (defined in Phase 3)
+1. All linked Eng Subtask PRs merged
+2. All acceptance criteria verified by QA
+3. Tests passing (Phase 3 will add coverage gates)
 4. Documentation updated where behaviour changed
-5. Story issue closed by the merging PR
+5. Story issue auto-closed by the merging PR
 
-## Owner Review Gates
+## File Locations
 
-1. **Story refined**: Owner approves moving from `Refining` to `Ready for Design`
-2. **Design approved**: Owner approves moving from `In Design` to `Ready for Dev`
-3. **PR review**: Owner approves PR before merge
-
-QA approval is required but does not need separate Owner sign-off; Owner sign-off at PR merge covers it.
+| File | Purpose | Audience |
+|---|---|---|
+| `requirements/*.md` | Approved Requirement Documents | Architect input |
+| `docs/AGENTIC_SDLC.md` | This file | All agents |
+| `docs/agents/REQUIREMENTS_DOC_TEMPLATE.md` | Doc structure | PO |
+| `docs/agents/ISSUE_TEMPLATES_REFERENCE.md` | Issue field reference | Architect, QA |
+| `docs/agents/LABEL_TAXONOMY.md` | Labels | All agents |
+| `docs/agents/BRANCH_AND_PR_CONVENTIONS.md` | Git/PR rules | Engineer |
+| `CLAUDE.md` (repo root, future) | Claude Code project context | Claude Code |
+| `.claude/commands/{architect,engineer,qa}.md` (future) | Slash command prompts | Claude Code |
 
 ## Communication Conventions
 
-- All decisions made in chat that affect the project must be reflected in the corresponding issue
-- "Open Questions" sections are for the Owner; agents should not invent answers
-- When an agent is uncertain, it asks rather than guesses
-- When an agent disagrees with another agent's output, it raises the disagreement to the Owner via an issue comment
+- Decisions made in chat that affect the project must be reflected in the corresponding file or issue.
+- "Open Questions" sections are for the Owner; agents should not invent answers.
+- When an agent is uncertain, it asks rather than guesses.
+- When an agent disagrees with another agent's output, it raises the disagreement to the Owner.
 
 ## Tools
 
 | Tool | Purpose |
 |---|---|
-| GitHub Issues + Project | Source of truth for state |
-| Claude Project (BA, Architect, QA) | Three Claude Projects, each with role-specific prompt and GitHub connector |
-| Claude Code | Engineer; runs in terminal |
-| GitHub Actions | CI, automation, agent triggers (Phase 5) |
+| GitHub Issues + Project (`lina2_agentic`) | State, source of truth for status |
+| Claude Project ("lina2 — PO") | PO chat-based drafting |
+| Claude Code | Architect, Engineer, QA execution |
+| `gh` CLI | All GitHub write operations |
+| GitHub Actions | CI (Phase 3), automation (Phase 4), agent triggers (Phase 5) |

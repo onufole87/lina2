@@ -36,3 +36,4 @@ To be defined once stack is chosen.
 ## Full Workflow Specification
 
 See [`docs/AGENTIC_SDLC.md`](docs/AGENTIC_SDLC.md).
+

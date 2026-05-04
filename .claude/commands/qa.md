@@ -16,31 +16,62 @@ Verify the PR meets the acceptance criteria from its linked Eng Subtask, check t
 
 You do not approve PRs. You provide findings; the Owner approves at Gate 3.
 
+## Tooling
+
+This command depends on the `yahsan2/gh-sub-issue` extension being installed for traversing issue parents. Verify before starting:
+
+```bash
+gh extension list | grep gh-sub-issue
+```
+
+If not installed, stop and tell the Owner to run `gh extension install yahsan2/gh-sub-issue` first.
+
 ## Workflow
 
-### Step 1 — Gather context
+### Step 1 — Gather PR context
 
 ```bash
-gh pr view $ARGUMENTS --json number,title,body,headRefName,baseRefName,labels,files,state
-gh pr diff $ARGUMENTS
+gh pr view $ARGUMENTS --repo onufole87/lina2 --json number,title,body,headRefName,baseRefName,labels,files,state
+gh pr diff $ARGUMENTS --repo onufole87/lina2
 ```
 
-Extract from the PR body the linked Eng Subtask number (the "Closes #N" line). Then:
+Extract from the PR body the linked Eng Subtask number (the "Closes #N" line). If the PR has no `Closes #N` reference, stop and tell the Owner — the PR is malformed and Engineer should fix the description.
+
+### Step 2 — Traverse from Eng Subtask up to the Story
+
+The `gh issue view` command does NOT support `--json parent`; that field doesn't exist. Use the `gh sub-issue` extension instead.
+
+Read the Eng Subtask body:
 
 ```bash
-gh issue view <eng-subtask-number> --json title,body,parent
-gh issue view <arch-task-number> --json title,body,parent
-gh issue view <story-number> --json title,body
+gh issue view <eng-subtask-number> --json title,body,labels --repo onufole87/lina2
 ```
 
-Read these repo files:
+Find its parent Arch Task:
 
-- `CLAUDE.md` (already loaded)
+```bash
+gh sub-issue list <eng-subtask-number> --repo onufole87/lina2 --relation parent --json parent.number,parent.title
+```
+
+Read the Arch Task body for design context:
+
+```bash
+gh issue view <arch-task-number> --json title,body --repo onufole87/lina2
+```
+
+Find the Story (parent of the Arch Task):
+
+```bash
+gh sub-issue list <arch-task-number> --repo onufole87/lina2 --relation parent --json parent.number,parent.title
+gh issue view <story-number> --json title,body --repo onufole87/lina2
+```
+
+Read repo files:
+
+- `CLAUDE.md` (already loaded by Claude Code at session start)
 - `docs/agents/BRANCH_AND_PR_CONVENTIONS.md`
 
-If the PR has no `Closes #N` reference, stop and tell the Owner — the PR is malformed and Engineer should fix the description.
-
-### Step 2 — Check out the PR locally
+### Step 3 — Check out the PR locally
 
 ```bash
 gh pr checkout $ARGUMENTS
@@ -49,7 +80,7 @@ git status
 
 You're now on the PR's branch with its changes. From here, you can read, run, and modify code.
 
-### Step 3 — Verify acceptance criteria item by item
+### Step 4 — Verify acceptance criteria item by item
 
 For each acceptance criterion in the linked Eng Subtask:
 
@@ -59,14 +90,14 @@ For each acceptance criterion in the linked Eng Subtask:
 
 Build a results table for the review comment.
 
-### Step 4 — Check test coverage
+### Step 5 — Check test coverage
 
 Identify which tests cover the new behaviour:
 
 - For each acceptance criterion, find a test that asserts it
 - Note any criterion that has no corresponding test
 
-If the project has no test infrastructure yet (Phase 3 hasn't started), note this and skip step 5.
+If the project has no test infrastructure yet, note this and skip step 6.
 
 If test infrastructure exists, run the test suite:
 
@@ -78,9 +109,11 @@ If test infrastructure exists, run the test suite:
 #   pnpm test
 ```
 
-Capture the result. If tests fail, do not proceed to step 5 — report the failure to the Owner first.
+Capture the result. If tests fail, do not proceed to step 6 — report the failure to the Owner first.
 
-### Step 5 — Add missing tests (if test infra exists)
+Also run any project-level checks the subtask's acceptance criteria reference (e.g. `npm run lint`, `npm run build`).
+
+### Step 6 — Add missing tests (if test infra exists)
 
 For any acceptance criterion that lacks a test:
 
@@ -97,14 +130,14 @@ git push
 
 If you find that a test reveals a real bug (the code doesn't satisfy the criterion), do NOT fix the code — report it as a finding instead. Fixing implementation bugs is the Engineer's job; you go back to /engineer for that.
 
-### Step 6 — Post a structured review
+### Step 7 — Post a structured review
 
 ```bash
 cat > /tmp/qa-review.md <<'EOF'
 ## QA Review for PR #$ARGUMENTS
 
 Linked Eng Subtask: #<n>
-Reviewed at: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+Reviewed at: <UTC timestamp>
 
 ### Acceptance Criteria Verification
 
@@ -129,29 +162,33 @@ Reviewed at: $(date -u +%Y-%m-%dT%H:%M:%SZ)
 ### Verdict
 
 <one of: "Ready for Owner review", "Changes requested — see findings above", "Blocked — see findings above">
-
 EOF
 
-gh pr review $ARGUMENTS --comment --body-file /tmp/qa-review.md
+gh pr review $ARGUMENTS --repo onufole87/lina2 --comment --body-file /tmp/qa-review.md
 ```
 
-### Step 7 — Update labels
+### Step 8 — Update labels on the PR
 
 If verdict is "Ready for Owner review":
 
 ```bash
-gh pr edit $ARGUMENTS --remove-label "role/qa,needs/qa" --add-label "role/owner,needs/review"
+gh pr edit $ARGUMENTS --repo onufole87/lina2 --remove-label "role/qa,needs/qa" --add-label "role/owner,needs/review"
 ```
 
 If verdict is "Changes requested" or "Blocked":
 
 ```bash
-gh pr edit $ARGUMENTS --remove-label "needs/qa" --add-label "role/engineer,needs/implementation"
+gh pr edit $ARGUMENTS --repo onufole87/lina2 --remove-label "needs/qa" --add-label "role/engineer,needs/implementation"
 ```
 
-Also for Blocked: add the `blocked` label to both the PR and the linked Eng Subtask issue.
+Also for Blocked: add the `blocked` label to both the PR and the linked Eng Subtask issue:
 
-### Step 8 — Report to chat
+```bash
+gh pr edit $ARGUMENTS --repo onufole87/lina2 --add-label "blocked"
+gh issue edit <eng-subtask-number> --repo onufole87/lina2 --add-label "blocked"
+```
+
+### Step 9 — Report to chat
 
 Print a summary identifying:
 
@@ -187,3 +224,4 @@ Then stop.
 - Never delete tests written by Engineer.
 - Tests you add must not introduce flakiness (no time-dependent assertions, no network calls without mocks).
 - If you discover the linked Eng Subtask was vague or contradictory, raise this on the Arch Task as a comment so future subtasks under that design are clearer.
+- If `gh` returns an error, stop and report it. Do not retry blindly.

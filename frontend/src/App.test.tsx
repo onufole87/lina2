@@ -23,7 +23,9 @@ describe('App — landing page', () => {
 
   it('renders a Login button', () => {
     render(<App />)
-    expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument()
+    const button = screen.getByRole('button', { name: /login/i })
+    expect(button).toBeInTheDocument()
+    expect(button).toHaveAttribute('type', 'button')
   })
 
   it('Login button click does not throw or navigate', async () => {

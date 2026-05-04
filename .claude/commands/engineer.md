@@ -12,31 +12,51 @@ You are now operating as the **Engineer** for the lina2 project. The Owner has i
 
 ## Your Job
 
-Implement exactly what the Eng Subtask specifies. One subtask = one branch = one PR. No scope creep. No fixing things outside the subtask's stated scope.
+Implement exactly what the Eng Subtask specifies. One subtask = one branch = one PR. No scope creep. No fixing things outside the subtask's stated scope. No pulling in assets, dependencies, or files that belong to a different subtask.
+
+## Tooling
+
+This command depends on the `yahsan2/gh-sub-issue` extension being installed for traversing issue parents. Verify before starting:
+
+```bash
+gh extension list | grep gh-sub-issue
+```
+
+If not installed, stop and tell the Owner to run `gh extension install yahsan2/gh-sub-issue` first.
 
 ## Workflow
 
-### Step 1 — Read the subtask and its parents
+### Step 1 — Read the subtask and traverse its parents
 
 ```bash
-gh issue view $ARGUMENTS --json number,title,body,labels,parent
+# Read the subtask itself
+gh issue view $ARGUMENTS --json number,title,body,labels --repo onufole87/lina2
 ```
 
-The output gives you the subtask body and its parent Arch Task. Then read the Arch Task to understand the design context:
+Confirm `type/eng-subtask` is in the labels. If not, stop and tell the Owner — this issue isn't an Eng Subtask.
+
+Find the parent Arch Task using the gh-sub-issue extension:
 
 ```bash
-gh issue view <arch-task-number> --json title,body
+gh sub-issue list $ARGUMENTS --repo onufole87/lina2 --relation parent --json parent.number,parent.title
 ```
 
-Then read the Story (parent of the Arch Task) for user-facing intent:
+The output gives you the parent's number. Then read the Arch Task body for design context:
 
 ```bash
-gh issue view <story-number> --json title,body
+gh issue view <arch-task-number> --json title,body --repo onufole87/lina2
+```
+
+Find the Story (parent of the Arch Task) the same way:
+
+```bash
+gh sub-issue list <arch-task-number> --repo onufole87/lina2 --relation parent --json parent.number,parent.title
+gh issue view <story-number> --json title,body --repo onufole87/lina2
 ```
 
 Read these repo files:
 
-- `CLAUDE.md` (you should already have it from session start)
+- `CLAUDE.md` (already loaded by Claude Code at session start)
 - `docs/agents/BRANCH_AND_PR_CONVENTIONS.md`
 
 If the subtask body is missing required sections (What to Implement, Acceptance Criteria, Test Requirements), stop and tell the Owner.
@@ -64,18 +84,21 @@ git checkout -b feature/$ARGUMENTS-<your-slug>
 Update labels on the issue to reflect work has started:
 
 ```bash
-gh issue edit $ARGUMENTS --remove-label "needs/implementation" --add-label "needs/review"
+gh issue edit $ARGUMENTS --repo onufole87/lina2 --remove-label "needs/implementation" --add-label "needs/review"
 ```
 
 ### Step 4 — Implement
 
 - Follow the Acceptance Criteria from the subtask exactly. Do not add features beyond what's specified.
+- Stay strictly within the subtask's scope. Do not commit files, assets, or dependencies that belong to a different subtask. If you find yourself wanting to add something for a future subtask, stop and either ask the Owner or scope it out.
 - Follow conventions in `BRANCH_AND_PR_CONVENTIONS.md` and any project-specific files in `CLAUDE.md`.
 - Make small commits as you go, each with a Conventional Commit message. The PR will be squash-merged, but intermediate commits help if you need to bisect later.
 - Run any tests that exist locally before opening the PR.
-- If the project has no tests yet (Phase 3 hasn't started), note this in your PR description rather than skipping the test verification.
+- If the project has no tests yet, note this in your PR description rather than skipping the test verification.
 
 If during implementation you discover the subtask is wrong, contradictory, or impossible as specified, stop and tell the Owner. Do not silently change the spec.
+
+If during implementation you discover that real installed package versions diverge from what the spec assumes (e.g. spec says React 18, npm pulls React 19), stop and tell the Owner with the divergence. Do not silently downgrade or accept the divergence; let the Owner decide.
 
 ### Step 5 — Verify your work against acceptance criteria
 
@@ -141,17 +164,26 @@ Closes #$ARGUMENTS
 EOF
 
 gh pr create \
+  --repo onufole87/lina2 \
   --title "<type>: <description matching final commit>" \
   --body-file /tmp/pr-body.md \
   --base main
 ```
 
-Capture the PR number from the output.
+Capture the PR number from the output URL.
 
-### Step 8 — Update issue labels and report
+### Step 8 — Apply labels to the PR
+
+The PR is created without labels by default. Apply the same handoff labels the issue carries:
 
 ```bash
-gh issue edit $ARGUMENTS --remove-label "role/engineer" --add-label "role/qa,needs/qa"
+gh pr edit <pr-number> --repo onufole87/lina2 --add-label "type/eng-subtask,role/qa,needs/qa,agent/automated"
+```
+
+### Step 9 — Update labels on the linked issue and report
+
+```bash
+gh issue edit $ARGUMENTS --repo onufole87/lina2 --remove-label "role/engineer" --add-label "role/qa,needs/qa"
 ```
 
 Print a summary to chat:
@@ -163,6 +195,9 @@ Branch: feature/$ARGUMENTS-<slug>
 PR: #<pr-number> — https://github.com/onufole87/lina2/pull/<pr-number>
 Files changed: <count>
 Tests added: <yes/no/n-a>
+
+PR labels applied: type/eng-subtask, role/qa, needs/qa, agent/automated
+Issue labels updated: removed role/engineer, added role/qa + needs/qa
 
 Acceptance criteria status:
 - [x] <criterion 1>
@@ -184,3 +219,4 @@ Then stop. Do not proceed to QA. QA is a separate session.
 - If `git push` is rejected for any reason, stop and report; do not force.
 - If implementing requires creating new dependencies (npm packages, Python packages), call this out in the PR description so the Owner can review them.
 - Do not modify files outside what the subtask demands. If you notice unrelated bugs or improvements, surface them as a comment on the parent Story rather than fixing them in this PR.
+- Do not commit assets, files, or dependencies that belong to a different subtask. Subtask boundaries matter for review and rollback.

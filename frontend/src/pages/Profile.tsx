@@ -1,3 +1,4 @@
+<<<<<<< feature/24-profile-form
 import { useState, type ChangeEvent } from 'react'
 
 export default function Profile() {
@@ -22,6 +23,9 @@ export default function Profile() {
     console.log('Save clicked', { name, email, bio })
   }
 
+=======
+export default function Profile() {
+>>>>>>> main
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-2xl">
@@ -37,6 +41,7 @@ export default function Profile() {
           <p className="mt-2 text-gray-600">
             Manage your personal information below.
           </p>
+<<<<<<< feature/24-profile-form
 
           <form className="mt-6 space-y-6">
             {/* Name Field */}
@@ -95,6 +100,9 @@ export default function Profile() {
               </button>
             </div>
           </form>
+=======
+          {/* Form fields will be added in next subtask */}
+>>>>>>> main
         </section>
 
         {/* Settings Section */}

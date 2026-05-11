@@ -1,5 +1,8 @@
 import { render, screen } from '@testing-library/react'
+<<<<<<< feature/24-profile-form
 import userEvent from '@testing-library/user-event'
+=======
+>>>>>>> main
 import { BrowserRouter } from 'react-router-dom'
 import Profile from './Profile'
 
@@ -31,6 +34,7 @@ describe('Profile component', () => {
     expect(screen.getByText(/settings/i)).toBeInTheDocument()
   })
 
+<<<<<<< feature/24-profile-form
   it('renders name field with correct label', () => {
     render(
       <BrowserRouter>
@@ -113,6 +117,8 @@ describe('Profile component', () => {
     expect(bioTextarea.value).toBe('This is my bio')
   })
 
+=======
+>>>>>>> main
   it('renders without errors', () => {
     const { container } = render(
       <BrowserRouter>

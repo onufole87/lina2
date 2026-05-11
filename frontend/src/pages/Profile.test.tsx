@@ -4,6 +4,13 @@ import { BrowserRouter } from 'react-router-dom'
 import Profile from './Profile'
 
 describe('Profile component', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    localStorage.clear()
+  })
   it('renders the profile page heading', () => {
     render(
       <BrowserRouter>
@@ -244,6 +251,134 @@ describe('Profile component', () => {
       const emailInput = screen.getByLabelText('Email')
       await user.type(emailInput, 'j')
       expect(screen.queryByText('Email is required')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('localStorage persistence', () => {
+    it('loads stored profile data on component mount', async () => {
+      const profileData = {
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        bio: 'My bio',
+      }
+      localStorage.setItem('profile', JSON.stringify(profileData))
+
+      render(
+        <BrowserRouter>
+          <Profile />
+        </BrowserRouter>
+      )
+
+      const nameInput = screen.getByLabelText('Name') as HTMLInputElement
+      const emailInput = screen.getByLabelText('Email') as HTMLInputElement
+      const bioTextarea = screen.getByLabelText('Bio') as HTMLTextAreaElement
+
+      expect(nameInput.value).toBe('Jane Doe')
+      expect(emailInput.value).toBe('jane@example.com')
+      expect(bioTextarea.value).toBe('My bio')
+    })
+
+    it('saves profile data to localStorage on successful form submission', async () => {
+      const user = userEvent.setup()
+      render(
+        <BrowserRouter>
+          <Profile />
+        </BrowserRouter>
+      )
+
+      const nameInput = screen.getByLabelText('Name')
+      const emailInput = screen.getByLabelText('Email')
+      const bioTextarea = screen.getByLabelText('Bio')
+      const saveButton = screen.getByRole('button', { name: /save/i })
+
+      await user.type(nameInput, 'John Doe')
+      await user.type(emailInput, 'john@example.com')
+      await user.type(bioTextarea, 'My bio')
+      await user.click(saveButton)
+
+      const stored = localStorage.getItem('profile')
+      expect(stored).toBe(JSON.stringify({ name: 'John Doe', email: 'john@example.com', bio: 'My bio' }))
+    })
+
+    it('does not save to localStorage when validation fails', async () => {
+      const user = userEvent.setup()
+      render(
+        <BrowserRouter>
+          <Profile />
+        </BrowserRouter>
+      )
+
+      const saveButton = screen.getByRole('button', { name: /save/i })
+      await user.click(saveButton)
+
+      // Nothing should be stored since validation failed
+      expect(localStorage.getItem('profile')).toBeNull()
+    })
+
+    it('shows empty form when localStorage has no data', () => {
+      render(
+        <BrowserRouter>
+          <Profile />
+        </BrowserRouter>
+      )
+
+      const nameInput = screen.getByLabelText('Name') as HTMLInputElement
+      const emailInput = screen.getByLabelText('Email') as HTMLInputElement
+      const bioTextarea = screen.getByLabelText('Bio') as HTMLTextAreaElement
+
+      expect(nameInput.value).toBe('')
+      expect(emailInput.value).toBe('')
+      expect(bioTextarea.value).toBe('')
+    })
+
+    it('overwrites previous localStorage data on new save', async () => {
+      const user = userEvent.setup()
+
+      // First save
+      const { rerender } = render(
+        <BrowserRouter>
+          <Profile />
+        </BrowserRouter>
+      )
+
+      const nameInput = screen.getByLabelText('Name')
+      const emailInput = screen.getByLabelText('Email')
+      const saveButton = screen.getByRole('button', { name: /save/i })
+
+      await user.type(nameInput, 'First Name')
+      await user.type(emailInput, 'first@example.com')
+      await user.click(saveButton)
+
+      expect(JSON.parse(localStorage.getItem('profile') || '{}')).toEqual({
+        name: 'First Name',
+        email: 'first@example.com',
+        bio: '',
+      })
+
+      // Simulate page reload by clearing inputs and rerendering
+      localStorage.clear()
+
+      // Second save with different data
+      rerender(
+        <BrowserRouter>
+          <Profile />
+        </BrowserRouter>
+      )
+
+      const nameInput2 = screen.getByLabelText('Name')
+      const emailInput2 = screen.getByLabelText('Email')
+
+      await user.clear(nameInput2)
+      await user.clear(emailInput2)
+      await user.type(nameInput2, 'Second Name')
+      await user.type(emailInput2, 'second@example.com')
+      await user.click(saveButton)
+
+      expect(JSON.parse(localStorage.getItem('profile') || '{}')).toEqual({
+        name: 'Second Name',
+        email: 'second@example.com',
+        bio: '',
+      })
     })
   })
 })

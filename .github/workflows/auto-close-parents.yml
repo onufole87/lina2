@@ -38,7 +38,7 @@ jobs:
         if: steps.check_type.outputs.type == 'eng-subtask'
         run: |
           # Get parent Arch Task
-          PARENT=$(gh sub-issue list ${{ github.event.issue.number }} --repo ${{ github.repository }} --relation parent --json parent.number --jq '.parent.number // empty')
+          PARENT=$(gh sub-issue list ${{ github.event.issue.number }} --repo ${{ github.repository }} --relation parent --json parent.number | jq -r '.parent.number // empty')
           
           if [ -z "$PARENT" ]; then
             echo "No parent Arch Task found, exiting"

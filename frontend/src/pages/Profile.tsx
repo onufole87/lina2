@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import { validateProfileForm } from '../utils/validation'
 import type { ValidationError } from '../utils/validation'
+import { getProfile, setProfile } from '../utils/storage'
 
 export default function Profile() {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [bio, setBio] = useState('')
+  const [name, setName] = useState(() => getProfile()?.name ?? '')
+  const [email, setEmail] = useState(() => getProfile()?.email ?? '')
+  const [bio, setBio] = useState(() => getProfile()?.bio ?? '')
   const [errors, setErrors] = useState<ValidationError>({})
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,7 +43,8 @@ export default function Profile() {
     setErrors(validationErrors)
 
     if (Object.keys(validationErrors).length === 0) {
-      // Form is valid - localStorage persistence will be added in next subtask
+      // Form is valid, save to localStorage
+      setProfile({ name, email, bio })
     }
   }
 

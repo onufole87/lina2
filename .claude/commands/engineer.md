@@ -26,6 +26,37 @@ If not installed, stop and tell the Owner to run `gh extension install yahsan2/g
 
 ## Workflow
 
+### Step 0 — Pre-flight: sync local main
+
+Before creating a feature branch, ensure your local main is clean and synced with the latest code.
+
+```bash
+git checkout main
+git pull
+git fetch --prune
+```
+
+Clean up any stale Claude Code worktrees from previous runs:
+
+```bash
+git worktree list
+```
+
+If you see worktrees under `.claude/worktrees/`, remove them:
+
+```bash
+git worktree remove /path/to/worktree --force
+```
+
+Repeat for each stale worktree. Then verify clean state:
+
+```bash
+git status
+# Should print: "On branch main" and "nothing to commit, working tree clean"
+```
+
+If `git status` shows uncommitted changes or you're not on main, stop and tell the Owner. Do not proceed.
+
 ### Step 1 — Read the subtask and traverse its parents
 
 ```bash
@@ -52,17 +83,7 @@ Read repo files: `CLAUDE.md` (already loaded), `docs/agents/BRANCH_AND_PR_CONVEN
 
 If the subtask body is missing required sections, stop and tell the Owner.
 
-### Step 2 — Verify clean working tree
-
-```bash
-git status
-git checkout main
-git pull
-```
-
-If not clean or can't switch to main, stop and tell the Owner.
-
-### Step 3 — Create a feature branch
+### Step 2 — Create a feature branch
 
 Branch format: `feature/<issue-number>-<short-slug>`. Slug rules: kebab-case, 2–5 words, lowercase, no special characters.
 
@@ -71,7 +92,7 @@ git checkout -b feature/$ARGUMENTS-<your-slug>
 gh issue edit $ARGUMENTS --repo onufole87/lina2 --remove-label "needs/implementation" --add-label "needs/review"
 ```
 
-### Step 4 — Implement
+### Step 3 — Implement
 
 - Follow Acceptance Criteria exactly. Do not add features beyond what's specified.
 - Stay strictly within the subtask's scope. No assets, dependencies, or files that belong to a different subtask.
@@ -83,7 +104,7 @@ If you discover the subtask is wrong or impossible as specified, stop and tell t
 
 If installed package versions diverge from the spec (e.g. spec says React 18 but npm pulls React 19), stop and tell the Owner with the divergence. Do not silently accept it.
 
-### Step 5 — Verify acceptance criteria locally
+### Step 4 — Verify acceptance criteria locally
 
 Before opening the PR, in the project directory (`/frontend` for this project):
 
@@ -98,7 +119,7 @@ All four must exit 0. If any fail, stop and tell the Owner what failed. CI will 
 
 For each item in the Acceptance Criteria checklist, confirm it's met. If any cannot be ticked, stop and tell the Owner.
 
-### Step 6 — Commit and push
+### Step 5 — Commit and push
 
 ```bash
 git add <files>
@@ -106,7 +127,7 @@ git commit -m "<type>: <description>"
 git push -u origin feature/$ARGUMENTS-<slug>
 ```
 
-### Step 7 — Open the PR
+### Step 6 — Open the PR
 
 ```bash
 cat > /tmp/pr-body.md <<'EOF'
@@ -172,13 +193,13 @@ gh pr create \
 
 Capture the PR number.
 
-### Step 8 — Apply labels to the PR
+### Step 7 — Apply labels to the PR
 
 ```bash
 gh pr edit <pr-number> --repo onufole87/lina2 --add-label "type/eng-subtask,role/qa,needs/qa,agent/automated"
 ```
 
-### Step 9 — Update labels on the linked issue and report
+### Step 8 — Update labels on the linked issue and report
 
 ```bash
 gh issue edit $ARGUMENTS --repo onufole87/lina2 --remove-label "role/engineer" --add-label "role/qa,needs/qa"

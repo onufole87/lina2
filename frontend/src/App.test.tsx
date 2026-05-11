@@ -34,4 +34,19 @@ describe('App — landing page', () => {
     const button = screen.getByRole('button', { name: /login/i })
     await user.click(button)
   })
+
+  it('renders a Profile link', () => {
+    render(<App />)
+    const profileLink = screen.getByRole('link', { name: /profile/i })
+    expect(profileLink).toBeInTheDocument()
+    expect(profileLink).toHaveAttribute('href', '/profile')
+  })
+
+  it('navigates to profile page when profile link is clicked', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    const profileLink = screen.getByRole('link', { name: /profile/i })
+    await user.click(profileLink)
+    expect(screen.getByRole('heading', { level: 1, name: /^Profile$/ })).toBeInTheDocument()
+  })
 })

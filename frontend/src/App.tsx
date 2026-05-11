@@ -1,10 +1,8 @@
 import { useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
+import Profile from './pages/Profile'
 
-export default function App() {
-  useEffect(() => {
-    document.title = 'lina2'
-  }, [])
-
+function Landing() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-4">
       <h1 className="text-5xl font-bold tracking-tight">lina2</h1>
@@ -17,6 +15,27 @@ export default function App() {
       >
         Login
       </button>
+      <Link
+        to="/profile"
+        className="mt-4 text-indigo-600 hover:text-indigo-700 underline"
+      >
+        Profile
+      </Link>
     </main>
+  )
+}
+
+export default function App() {
+  useEffect(() => {
+    document.title = 'lina2'
+  }, [])
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/profile" element={<Profile />} />
+      </Routes>
+    </BrowserRouter>
   )
 }

@@ -1,0 +1,119 @@
+name: auto-close-parents
+
+on:
+  issues:
+    types:
+      - closed
+
+jobs:
+  auto-close-parents:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    timeout-minutes: 5
+
+    steps:
+      - name: Check if closed issue is Eng Subtask or Arch Task
+        id: check_type
+        run: |
+          LABELS=$(gh issue view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json labels --jq '.labels[].name')
+          if echo "$LABELS" | grep -q "type/eng-subtask"; then
+            echo "type=eng-subtask" >> $GITHUB_OUTPUT
+          elif echo "$LABELS" | grep -q "type/arch-task"; then
+            echo "type=arch-task" >> $GITHUB_OUTPUT
+          else
+            echo "type=other" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install gh-sub-issue extension
+        if: steps.check_type.outputs.type != 'other'
+        run: |
+          gh extension install yahsan2/gh-sub-issue || gh extension upgrade gh-sub-issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auto-close parent Arch Task if all Eng Subtasks are closed
+        if: steps.check_type.outputs.type == 'eng-subtask'
+        run: |
+          # Get parent Arch Task
+          PARENT=$(gh sub-issue list ${{ github.event.issue.number }} --repo ${{ github.repository }} --relation parent --json parent.number --jq '.parent.number // empty')
+          
+          if [ -z "$PARENT" ]; then
+            echo "No parent Arch Task found, exiting"
+            exit 0
+          fi
+          
+          echo "Parent Arch Task: #$PARENT"
+          
+          # List all children (Eng Subtasks) of the parent
+          CHILDREN=$(gh sub-issue list "$PARENT" --repo ${{ github.repository }} --relation children --json number,state --jq '.[] | .number')
+          
+          if [ -z "$CHILDREN" ]; then
+            echo "No Eng Subtasks found under Arch Task #$PARENT"
+            exit 0
+          fi
+          
+          # Check if all children are closed
+          ALL_CLOSED=true
+          for CHILD in $CHILDREN; do
+            STATE=$(gh issue view "$CHILD" --repo ${{ github.repository }} --json state --jq '.state')
+            if [ "$STATE" != "CLOSED" ]; then
+              ALL_CLOSED=false
+              echo "Eng Subtask #$CHILD is still OPEN"
+              break
+            fi
+          done
+          
+          if [ "$ALL_CLOSED" = true ]; then
+            echo "All Eng Subtasks under Arch Task #$PARENT are closed. Auto-closing."
+            gh issue close "$PARENT" --repo ${{ github.repository }} --reason completed \
+              --comment "Auto-closed: All Eng Subtasks merged. Design fully implemented."
+          else
+            echo "Some Eng Subtasks under Arch Task #$PARENT are still open. Not closing."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auto-close parent Story if all Arch Tasks are closed
+        if: steps.check_type.outputs.type == 'arch-task'
+        run: |
+          # Get parent Story
+          PARENT=$(gh sub-issue list ${{ github.event.issue.number }} --repo ${{ github.repository }} --relation parent --json parent.number --jq '.parent.number // empty')
+          
+          if [ -z "$PARENT" ]; then
+            echo "No parent Story found, exiting"
+            exit 0
+          fi
+          
+          echo "Parent Story: #$PARENT"
+          
+          # List all children (Arch Tasks) of the parent
+          CHILDREN=$(gh sub-issue list "$PARENT" --repo ${{ github.repository }} --relation children --json number,state --jq '.[] | .number')
+          
+          if [ -z "$CHILDREN" ]; then
+            echo "No Arch Tasks found under Story #$PARENT"
+            exit 0
+          fi
+          
+          # Check if all children are closed
+          ALL_CLOSED=true
+          for CHILD in $CHILDREN; do
+            STATE=$(gh issue view "$CHILD" --repo ${{ github.repository }} --json state --jq '.state')
+            if [ "$STATE" != "CLOSED" ]; then
+              ALL_CLOSED=false
+              echo "Arch Task #$CHILD is still OPEN"
+              break
+            fi
+          done
+          
+          if [ "$ALL_CLOSED" = true ]; then
+            echo "All Arch Tasks under Story #$PARENT are closed. Auto-closing."
+            gh issue close "$PARENT" --repo ${{ github.repository }} --reason completed \
+              --comment "Auto-closed: All Arch Tasks delivered. Story complete."
+          else
+            echo "Some Arch Tasks under Story #$PARENT are still open. Not closing."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

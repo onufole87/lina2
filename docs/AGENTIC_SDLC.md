@@ -34,8 +34,10 @@ QA (Claude Code: /qa <pr-number>)
     ▼
 Done
     │
-    │  6. Owner manually closes Arch Task and Story when all
-    │     Eng Subtasks merged (automation in Phase 4)
+    │  6. When the last Eng Subtask merges:
+    │     - Eng Subtask auto-closes (via "Closes #N")
+    │     - Arch Task auto-closes (via GitHub Actions)
+    │     - Story auto-closes (via GitHub Actions)
     ▼
 ```
 
@@ -43,7 +45,7 @@ Done
 
 ### Owner (human)
 
-Defines high-level goals, approves at three gates, resolves Open Questions, has final say on prioritisation, merges PRs, manually closes Arch Tasks and Stories (until Phase 4 automates this).
+Defines high-level goals, approves at three gates, resolves Open Questions, has final say on prioritisation, merges PRs. Closures of Arch Tasks and Stories are now automatic.
 
 ### PO Agent (Claude Project: "lina2 — PO")
 
@@ -55,7 +57,7 @@ Reads a Requirement, creates a Story issue per User Story, drafts an Arch Task w
 
 ### Engineer (Claude Code, /engineer command)
 
-Creates a feature branch, implements per subtask spec, runs local CI-equivalent checks (lint, typecheck, test, build), pushes, opens a PR with `Closes #N`, applies labels to the PR.
+Creates a feature branch (with automatic pre-flight sync as Step 0), implements per subtask spec, runs local CI-equivalent checks (lint, typecheck, test, build), pushes, opens a PR with `Closes #N`, applies labels to the PR.
 
 ### QA (Claude Code, /qa command)
 
@@ -86,6 +88,21 @@ The `frontend-ci` check is a required status check on `main` (configured in the 
 
 Engineer runs the same four checks locally (lint, typecheck, test, build) before opening a PR. QA verifies CI has passed before proceeding with manual review.
 
+## Automatic Issue Closure (Phase 4)
+
+The `auto-close-parents` GitHub Actions workflow (`.github/workflows/auto-close-parents.yml`) runs when any issue closes. It cascades closure up the issue tree:
+
+**Trigger:** Issue closed  
+**Logic:**
+1. If closed issue is an **Eng Subtask**: check if all sibling Eng Subtasks under its Arch Task are closed. If yes, auto-close the Arch Task with a comment.
+2. If closed issue is an **Arch Task**: check if all sibling Arch Tasks under its Story are closed. If yes, auto-close the Story with a comment.
+
+**Result:** When the last Eng Subtask of an Arch Task merges (PR merge auto-closes the Eng Subtask via `Closes #N`), the Arch Task auto-closes. When the last Arch Task of a Story closes, the Story auto-closes.
+
+**Comments are silent** — no pings, just recorded for audit.
+
+This eliminates the manual `gh issue close` commands the Owner previously ran.
+
 ## Issue Lifecycle (Project Status)
 
 ```
@@ -105,7 +122,7 @@ In Dev → In Review → In QA → Done
 | In Dev | `/engineer` running | Engineer (label transition) |
 | In Review | PR opened, CI running/passed | Engineer |
 | In QA | `/qa` running | QA |
-| Done | PR merged | Auto (Project workflow on PR merge) |
+| Done | PR merged (auto-closes Eng Subtask, cascades to parents) | Auto (GitHub Actions) |
 
 ## Branching, Commits, PRs
 
@@ -124,25 +141,9 @@ See `docs/agents/BRANCH_AND_PR_CONVENTIONS.md`.
 2. All acceptance criteria verified by QA
 3. Tests passing in CI (coverage reported, no threshold enforced yet)
 4. Documentation updated where behaviour changed
-5. Eng Subtask issues auto-closed by their merging PRs
-6. Arch Task closed manually by Owner with note that design is delivered (Phase 4 will automate)
-7. Story closed manually by Owner with note that user-facing capability is delivered (Phase 4 will automate)
-
-## Manual Closure Convention (until Phase 4)
-
-GitHub auto-closes the Eng Subtask issue when its PR merges via `Closes #N`. It does NOT auto-close the parent Arch Task or grandparent Story. The Owner closes these manually:
-
-```bash
-# After the last Eng Subtask under an Arch Task is merged:
-gh issue close <arch-task-number> --reason completed \
-  --comment "Design fully implemented. Subtasks merged: <list>. Closing per workflow convention."
-
-# When all Eng Subtasks under all Arch Tasks under a Story are merged:
-gh issue close <story-number> --reason completed \
-  --comment "Story complete. Acceptance criteria from requirements/<file>.md verified by QA. Definition of Done met."
-```
-
-Phase 4 will add a GitHub Action that watches for sub-issue closures and auto-closes parents when their last child closes.
+5. Eng Subtask issues auto-closed by their merging PRs (via `Closes #N`)
+6. Arch Task issues auto-closed by workflow when all Eng Subtasks close
+7. Story issues auto-closed by workflow when all Arch Tasks close
 
 ## File Locations
 
@@ -157,6 +158,7 @@ Phase 4 will add a GitHub Action that watches for sub-issue closures and auto-cl
 | `CLAUDE.md` | Claude Code project context | Claude Code |
 | `.claude/commands/{architect,engineer,qa}.md` | Slash command prompts | Claude Code |
 | `.github/workflows/frontend-ci.yml` | CI workflow | GitHub Actions |
+| `.github/workflows/auto-close-parents.yml` | Auto-closure workflow | GitHub Actions |
 
 ## Communication Conventions
 
@@ -173,5 +175,5 @@ Phase 4 will add a GitHub Action that watches for sub-issue closures and auto-cl
 | Claude Project ("lina2 — PO") | PO chat-based drafting |
 | Claude Code (Code tab or CLI) | Architect, Engineer, QA execution |
 | `gh` CLI + `gh sub-issue` extension | All GitHub write operations |
-| GitHub Actions (`frontend-ci`) | CI on every PR |
-| `lina2_agentic` Project automations | Label/status sync (Phase 4 will expand this) |
+| GitHub Actions (`frontend-ci`, `auto-close-parents`) | CI and auto-closure |
+| `lina2_agentic` Project automations | Label/status sync (future phase) |

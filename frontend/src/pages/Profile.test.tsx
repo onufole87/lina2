@@ -49,6 +49,16 @@ describe('Profile Component', () => {
       render(<Profile />)
       expect(screen.getByText('Settings')).toBeInTheDocument()
     })
+
+    it('renders theme preference placeholder in settings section', () => {
+      render(<Profile />)
+      expect(screen.getByText(/Theme preference selector/i)).toBeInTheDocument()
+    })
+
+    it('renders language preference placeholder in settings section', () => {
+      render(<Profile />)
+      expect(screen.getByText(/Language preference selector/i)).toBeInTheDocument()
+    })
   })
 
   describe('User Input - Field Interaction', () => {

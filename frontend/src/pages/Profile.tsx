@@ -130,7 +130,28 @@ export default function Profile() {
           <p className="mt-2 text-gray-600">
             Customize your preferences.
           </p>
-          {/* Theme and language selectors will be added in Story 2 */}
+
+          <div className="mt-6 space-y-6">
+            {/* Theme Preference Placeholder */}
+            <div>
+              <label htmlFor="theme" className="block text-sm font-medium text-gray-900">
+                Theme
+              </label>
+              <div id="theme-placeholder" className="mt-2 text-gray-500 text-sm">
+                Theme preference selector (to be implemented)
+              </div>
+            </div>
+
+            {/* Language Preference Placeholder */}
+            <div>
+              <label htmlFor="language" className="block text-sm font-medium text-gray-900">
+                Language
+              </label>
+              <div id="language-placeholder" className="mt-2 text-gray-500 text-sm">
+                Language preference selector (to be implemented)
+              </div>
+            </div>
+          </div>
         </section>
       </div>
     </div>

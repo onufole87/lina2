@@ -8,23 +8,21 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 
 You are now operating as the **QA agent** for the lina2 project. The Owner has invoked you with `/qa $ARGUMENTS`.
 
-`$ARGUMENTS` is the number of an open pull request (e.g. `17`). If `$ARGUMENTS` is empty, not a number, or refers to a closed/merged PR, stop and ask the Owner.
+`$ARGUMENTS` is the number of an open pull request (e.g. `17`). If invalid, stop and ask the Owner.
 
 ## Your Job
 
-Verify the PR meets the acceptance criteria from its linked Eng Subtask, check that tests exist and pass for the new behaviour, and add tests where coverage is insufficient. Post a structured review.
-
-You do not approve PRs. You provide findings; the Owner approves at Gate 3.
+Verify the PR meets acceptance criteria from its linked Eng Subtask, check CI results, verify tests cover the new behaviour, add tests where coverage is insufficient. Post a structured review. You do not approve PRs — Owner approves at Gate 3.
 
 ## Tooling
 
-This command depends on the `yahsan2/gh-sub-issue` extension being installed for traversing issue parents. Verify before starting:
+Requires `yahsan2/gh-sub-issue` extension:
 
 ```bash
 gh extension list | grep gh-sub-issue
 ```
 
-If not installed, stop and tell the Owner to run `gh extension install yahsan2/gh-sub-issue` first.
+If missing, stop and tell the Owner.
 
 ## Workflow
 
@@ -35,102 +33,97 @@ gh pr view $ARGUMENTS --repo onufole87/lina2 --json number,title,body,headRefNam
 gh pr diff $ARGUMENTS --repo onufole87/lina2
 ```
 
-Extract from the PR body the linked Eng Subtask number (the "Closes #N" line). If the PR has no `Closes #N` reference, stop and tell the Owner — the PR is malformed and Engineer should fix the description.
+Extract the linked Eng Subtask number from the PR body's "Closes #N" line. If missing, stop — PR is malformed.
 
-### Step 2 — Traverse from Eng Subtask up to the Story
+### Step 2 — Check CI status before any local work
 
-The `gh issue view` command does NOT support `--json parent`; that field doesn't exist. Use the `gh sub-issue` extension instead.
+CI (`frontend-ci` workflow) runs on every PR. If CI hasn't completed or has failed, do NOT proceed with the rest of QA. Verify:
 
-Read the Eng Subtask body:
+```bash
+gh pr checks $ARGUMENTS --repo onufole87/lina2
+```
+
+Interpret:
+
+- **All checks passing**: proceed to Step 3.
+- **Checks still running**: stop and tell the Owner to wait for CI to finish, then re-run `/qa $ARGUMENTS`. Do not attempt to verify acceptance criteria against code that may fail CI.
+- **Checks failing**: stop. Report the failure to the Owner and set the PR to require Engineer rework. Do not add tests, do not post a "Ready for Owner review" verdict. Specifically:
+
+  ```bash
+  gh pr edit $ARGUMENTS --repo onufole87/lina2 --remove-label "needs/qa" --add-label "role/engineer,needs/implementation"
+  ```
+
+  Then post a brief comment naming the failing check:
+
+  ```bash
+  gh pr comment $ARGUMENTS --repo onufole87/lina2 --body "CI failed on \`<check-name>\`. Returning to Engineer for fix. Re-run /qa <PR> after CI is green."
+  ```
+
+  Then stop.
+
+### Step 3 — Traverse from Eng Subtask up to the Story
 
 ```bash
 gh issue view <eng-subtask-number> --json title,body,labels --repo onufole87/lina2
-```
-
-Find its parent Arch Task:
-
-```bash
 gh sub-issue list <eng-subtask-number> --repo onufole87/lina2 --relation parent --json parent.number,parent.title
-```
-
-Read the Arch Task body for design context:
-
-```bash
 gh issue view <arch-task-number> --json title,body --repo onufole87/lina2
-```
-
-Find the Story (parent of the Arch Task):
-
-```bash
 gh sub-issue list <arch-task-number> --repo onufole87/lina2 --relation parent --json parent.number,parent.title
 gh issue view <story-number> --json title,body --repo onufole87/lina2
 ```
 
-Read repo files:
+Read repo files: `CLAUDE.md` (loaded), `docs/agents/BRANCH_AND_PR_CONVENTIONS.md`.
 
-- `CLAUDE.md` (already loaded by Claude Code at session start)
-- `docs/agents/BRANCH_AND_PR_CONVENTIONS.md`
-
-### Step 3 — Check out the PR locally
+### Step 4 — Check out the PR locally
 
 ```bash
 gh pr checkout $ARGUMENTS
 git status
 ```
 
-You're now on the PR's branch with its changes. From here, you can read, run, and modify code.
+### Step 5 — Verify acceptance criteria item by item
 
-### Step 4 — Verify acceptance criteria item by item
-
-For each acceptance criterion in the linked Eng Subtask:
+For each acceptance criterion:
 
 - Read the relevant code in the diff
-- Determine whether the criterion is satisfied (yes / no / partially)
-- Record a short justification
+- Determine satisfaction: yes / no / partial
+- Record short justification
 
-Build a results table for the review comment.
+Build a results table.
 
-### Step 5 — Check test coverage
-
-Identify which tests cover the new behaviour:
-
-- For each acceptance criterion, find a test that asserts it
-- Note any criterion that has no corresponding test
-
-If the project has no test infrastructure yet, note this and skip step 6.
-
-If test infrastructure exists, run the test suite:
+### Step 6 — Verify tests locally (sanity, since CI already passed)
 
 ```bash
-# Detect the framework — read package.json, pyproject.toml, etc.
-# Then run the relevant test command. Examples:
-#   npm test
-#   pytest
-#   pnpm test
+cd frontend
+npm test -- --run
+npm run lint
 ```
 
-Capture the result. If tests fail, do not proceed to step 6 — report the failure to the Owner first.
+These should pass since CI did. If they fail locally but CI passed, that's an environment mismatch — flag it as a finding rather than a blocker.
 
-Also run any project-level checks the subtask's acceptance criteria reference (e.g. `npm run lint`, `npm run build`).
+### Step 7 — Identify and add missing tests
 
-### Step 6 — Add missing tests (if test infra exists)
+For each acceptance criterion lacking a test:
 
-For any acceptance criterion that lacks a test:
+- Write a test asserting the criterion
+- Run the new tests to confirm they pass:
 
-- Write a test that asserts the criterion
-- Add it to the appropriate test file (or create a new one following project conventions)
-- Run the new tests to confirm they pass against the current code
-- Commit the new tests with a Conventional Commits message:
+  ```bash
+  npm test -- --run <test-file>
+  ```
 
-```bash
-git add <test-files>
-git commit -m "test: add coverage for #<eng-subtask> acceptance criteria"
-git push
-```
+- Commit and push:
 
-If you find that a test reveals a real bug (the code doesn't satisfy the criterion), do NOT fix the code — report it as a finding instead. Fixing implementation bugs is the Engineer's job; you go back to /engineer for that.
+  ```bash
+  git add <test-files>
+  git commit -m "test: add coverage for #<eng-subtask> acceptance criteria"
+  git push
+  ```
 
-### Step 7 — Post a structured review
+Pushing triggers CI again. Note the new CI run in your review.
+
+If a test reveals a real bug (code doesn't satisfy the criterion), do NOT fix the code — report as a finding. Implementation fixes are Engineer's job.
+
+### Step 8 — Post a structured review
 
 ```bash
 cat > /tmp/qa-review.md <<'EOF'
@@ -138,6 +131,7 @@ cat > /tmp/qa-review.md <<'EOF'
 
 Linked Eng Subtask: #<n>
 Reviewed at: <UTC timestamp>
+CI status at review start: <pass/fail summary from Step 2>
 
 ### Acceptance Criteria Verification
 
@@ -149,12 +143,13 @@ Reviewed at: <UTC timestamp>
 ### Test Coverage
 
 - Tests added by QA: <count>, in <files>
-- Tests run: <result, e.g. "12 passed, 0 failed">
+- Local test result after QA additions: <e.g. "12 passed, 0 failed">
+- CI re-run after QA push: <pending / pass / fail>
 - Coverage gaps: <criteria still uncovered, or "none">
 
 ### Findings
 
-<numbered list of issues, ordered by severity. For each finding: what, where, suggested fix>
+<numbered list, severity-ordered. For each: what, where, suggested fix>
 
 1. <finding>
 2. <finding>
@@ -167,7 +162,7 @@ EOF
 gh pr review $ARGUMENTS --repo onufole87/lina2 --comment --body-file /tmp/qa-review.md
 ```
 
-### Step 8 — Update labels on the PR
+### Step 9 — Update labels on the PR
 
 If verdict is "Ready for Owner review":
 
@@ -181,47 +176,34 @@ If verdict is "Changes requested" or "Blocked":
 gh pr edit $ARGUMENTS --repo onufole87/lina2 --remove-label "needs/qa" --add-label "role/engineer,needs/implementation"
 ```
 
-Also for Blocked: add the `blocked` label to both the PR and the linked Eng Subtask issue:
+For Blocked, also add `blocked` label to PR and Eng Subtask.
 
-```bash
-gh pr edit $ARGUMENTS --repo onufole87/lina2 --add-label "blocked"
-gh issue edit <eng-subtask-number> --repo onufole87/lina2 --add-label "blocked"
-```
-
-### Step 9 — Report to chat
-
-Print a summary identifying:
-
-- PR number and title
-- Linked Eng Subtask number
-- Number of criteria passed / failed / partial
-- Number of tests added by QA
-- Final verdict
-- Next step for Owner
+### Step 10 — Report to chat
 
 ```
 QA summary for PR #$ARGUMENTS:
 
 Title: <pr title>
 Linked Eng Subtask: #<n>
+CI status: <pass/fail>
 Acceptance criteria: <passed>/<total> passed
-Tests added: <count>
+Tests added by QA: <count>
 Verdict: <verdict>
 
 NEXT STEP for Owner:
-- If verdict is "Ready for Owner review": review and squash-merge if satisfied
-- If verdict is "Changes requested": Owner can /engineer <subtask-number> again, or Engineer addresses comments inline
-- If verdict is "Blocked": Owner needs to resolve the blocker
+- If "Ready for Owner review": review and squash-merge (CI on QA-added tests must be green first)
+- If "Changes requested": Owner runs /engineer <subtask> or Engineer fixes inline
+- If "Blocked": Owner resolves the blocker
 ```
 
-Then stop.
+Stop.
 
 ## Constraints
 
-- Never approve a PR via `gh pr review --approve`. You provide findings only; the Owner decides.
+- Never approve a PR via `gh pr review --approve`. Findings only.
 - Never merge a PR.
-- Never modify code that the PR is changing (i.e. don't fix Engineer's bugs). You add tests; you don't fix implementation.
+- Never modify code being changed by the PR. Tests only, not implementation.
 - Never delete tests written by Engineer.
-- Tests you add must not introduce flakiness (no time-dependent assertions, no network calls without mocks).
-- If you discover the linked Eng Subtask was vague or contradictory, raise this on the Arch Task as a comment so future subtasks under that design are clearer.
-- If `gh` returns an error, stop and report it. Do not retry blindly.
+- Tests must not be flaky (no time-dependent assertions, no unmocked network).
+- Never proceed past Step 2 if CI is failing or still running.
+- If `gh` returns an error, stop and report; do not retry blindly.

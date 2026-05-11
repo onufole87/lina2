@@ -49,6 +49,25 @@ describe('Profile Component', () => {
       render(<Profile />)
       expect(screen.getByText('Settings')).toBeInTheDocument()
     })
+
+    it('renders theme preference placeholder in settings', () => {
+      render(<Profile />)
+      expect(screen.getByText('Theme')).toBeInTheDocument()
+      expect(screen.getByText('Choose your preferred color scheme for the application.')).toBeInTheDocument()
+      expect(screen.getByText('Theme preference selector will be added here')).toBeInTheDocument()
+    })
+
+    it('renders language preference placeholder in settings', () => {
+      render(<Profile />)
+      expect(screen.getByText('Language')).toBeInTheDocument()
+      expect(screen.getByText('Select your preferred language for the interface.')).toBeInTheDocument()
+      expect(screen.getByText('Language preference selector will be added here')).toBeInTheDocument()
+    })
+
+    it('renders settings customize description', () => {
+      render(<Profile />)
+      expect(screen.getByText('Customize your preferences.')).toBeInTheDocument()
+    })
   })
 
   describe('User Input - Field Interaction', () => {

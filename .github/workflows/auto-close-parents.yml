@@ -37,17 +37,15 @@ jobs:
       - name: Auto-close parent Arch Task if all Eng Subtasks are closed
         if: steps.check_type.outputs.type == 'eng-subtask'
         run: |
-          PARENT=$(gh sub-issue list ${{ github.event.issue.number }} --repo ${{ github.repository }} --relation parent --json parent.number | jq -r '.parent.number // empty')
+          PARENT=$(gh sub-issue list ${{ github.event.issue.number }} --repo ${{ github.repository }} --relation parent --json parent.number | jq -r 'if .parent.number then .parent.number else empty end')
           
           if [ -z "$PARENT" ]; then
-            echo "No parent Arch Task found"
             exit 0
           fi
           
-          CHILDREN=$(gh sub-issue list "$PARENT" --repo ${{ github.repository }} --relation children --json number | jq -r '.[] | .number')
+          CHILDREN=$(gh sub-issue list "$PARENT" --repo ${{ github.repository }} --relation children --json number | jq -r '.[] | .number // empty' | grep -v '^null$' | grep -v '^$')
           
           if [ -z "$CHILDREN" ]; then
-            echo "No Eng Subtasks under Arch Task #$PARENT"
             exit 0
           fi
           
@@ -70,17 +68,15 @@ jobs:
       - name: Auto-close parent Story if all Arch Tasks are closed
         if: steps.check_type.outputs.type == 'arch-task'
         run: |
-          PARENT=$(gh sub-issue list ${{ github.event.issue.number }} --repo ${{ github.repository }} --relation parent --json parent.number | jq -r '.parent.number // empty')
+          PARENT=$(gh sub-issue list ${{ github.event.issue.number }} --repo ${{ github.repository }} --relation parent --json parent.number | jq -r 'if .parent.number then .parent.number else empty end')
           
           if [ -z "$PARENT" ]; then
-            echo "No parent Story found"
             exit 0
           fi
           
-          CHILDREN=$(gh sub-issue list "$PARENT" --repo ${{ github.repository }} --relation children --json number | jq -r '.[] | .number')
+          CHILDREN=$(gh sub-issue list "$PARENT" --repo ${{ github.repository }} --relation children --json number | jq -r '.[] | .number // empty' | grep -v '^null$' | grep -v '^$')
           
           if [ -z "$CHILDREN" ]; then
-            echo "No Arch Tasks under Story #$PARENT"
             exit 0
           fi
           

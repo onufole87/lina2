@@ -628,4 +628,208 @@ describe('Profile Component', () => {
       expect(screen.queryByText('Please enter a valid email address')).not.toBeInTheDocument()
     })
   })
+
+  describe('Settings Persistence - Load on Mount', () => {
+    it('loads theme from localStorage on component mount', () => {
+      const settings = { theme: 'dark' as const, language: 'English' }
+      localStorage.setItem('settings', JSON.stringify(settings))
+      render(<Profile />)
+      const darkRadio = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
+      expect(darkRadio.checked).toBe(true)
+    })
+
+    it('loads language from localStorage on component mount', () => {
+      const settings = { theme: 'light' as const, language: 'Spanish' }
+      localStorage.setItem('settings', JSON.stringify(settings))
+      render(<Profile />)
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      expect(languageSelect.value).toBe('Spanish')
+    })
+
+    it('loads both theme and language from localStorage on mount', () => {
+      const settings = { theme: 'dark' as const, language: 'French' }
+      localStorage.setItem('settings', JSON.stringify(settings))
+      render(<Profile />)
+      const darkRadio = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      expect(darkRadio.checked).toBe(true)
+      expect(languageSelect.value).toBe('French')
+    })
+
+    it('uses defaults when localStorage is empty', () => {
+      render(<Profile />)
+      const lightRadio = screen.getByRole('radio', { name: 'Light' }) as HTMLInputElement
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      expect(lightRadio.checked).toBe(true)
+      expect(languageSelect.value).toBe('English')
+    })
+  })
+
+  describe('Settings Persistence - Eager Save on Change', () => {
+    it('saves theme selection to localStorage immediately when changed', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const darkRadio = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
+      await user.click(darkRadio)
+      const stored = localStorage.getItem('settings')
+      expect(stored).toBeTruthy()
+      const parsed = JSON.parse(stored!)
+      expect(parsed.theme).toBe('dark')
+      expect(parsed.language).toBe('English')
+    })
+
+    it('saves language selection to localStorage immediately when changed', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      await user.selectOptions(languageSelect, 'Spanish')
+      const stored = localStorage.getItem('settings')
+      expect(stored).toBeTruthy()
+      const parsed = JSON.parse(stored!)
+      expect(parsed.theme).toBe('light')
+      expect(parsed.language).toBe('Spanish')
+    })
+
+    it('saves both theme and language together when theme changes', async () => {
+      const user = userEvent.setup()
+      const settings = { theme: 'light' as const, language: 'French' }
+      localStorage.setItem('settings', JSON.stringify(settings))
+      render(<Profile />)
+      const darkRadio = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
+      await user.click(darkRadio)
+      const stored = localStorage.getItem('settings')
+      expect(stored).toBeTruthy()
+      const parsed = JSON.parse(stored!)
+      expect(parsed.theme).toBe('dark')
+      expect(parsed.language).toBe('French')
+    })
+
+    it('saves both theme and language together when language changes', async () => {
+      const user = userEvent.setup()
+      const settings = { theme: 'dark' as const, language: 'English' }
+      localStorage.setItem('settings', JSON.stringify(settings))
+      render(<Profile />)
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      await user.selectOptions(languageSelect, 'German')
+      const stored = localStorage.getItem('settings')
+      expect(stored).toBeTruthy()
+      const parsed = JSON.parse(stored!)
+      expect(parsed.theme).toBe('dark')
+      expect(parsed.language).toBe('German')
+    })
+
+    it('overwrites previous settings when theme is changed', async () => {
+      const user = userEvent.setup()
+      const settings = { theme: 'light' as const, language: 'Spanish' }
+      localStorage.setItem('settings', JSON.stringify(settings))
+      render(<Profile />)
+      const darkRadio = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
+      await user.click(darkRadio)
+      const stored = localStorage.getItem('settings')
+      const parsed = JSON.parse(stored!)
+      expect(parsed.theme).toBe('dark')
+      expect(parsed.language).toBe('Spanish')
+    })
+
+    it('overwrites previous settings when language is changed', async () => {
+      const user = userEvent.setup()
+      const settings = { theme: 'dark' as const, language: 'English' }
+      localStorage.setItem('settings', JSON.stringify(settings))
+      render(<Profile />)
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      await user.selectOptions(languageSelect, 'French')
+      const stored = localStorage.getItem('settings')
+      const parsed = JSON.parse(stored!)
+      expect(parsed.theme).toBe('dark')
+      expect(parsed.language).toBe('French')
+    })
+  })
+
+  describe('Settings Persistence - Page Reload', () => {
+    it('preserves theme selection after component remount (simulated page reload)', async () => {
+      const user = userEvent.setup()
+      const { unmount } = render(<Profile />)
+      const darkRadio = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
+      await user.click(darkRadio)
+      // Simulate page reload by unmounting and remounting
+      unmount()
+      render(<Profile />)
+      const darkRadioAfterRemount = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
+      expect(darkRadioAfterRemount.checked).toBe(true)
+    })
+
+    it('preserves language selection after component remount (simulated page reload)', async () => {
+      const user = userEvent.setup()
+      const { unmount } = render(<Profile />)
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      await user.selectOptions(languageSelect, 'German')
+      // Simulate page reload by unmounting and remounting
+      unmount()
+      render(<Profile />)
+      const languageSelectAfterRemount = screen.getByLabelText('Language') as HTMLSelectElement
+      expect(languageSelectAfterRemount.value).toBe('German')
+    })
+
+    it('preserves both theme and language after component remount', async () => {
+      const user = userEvent.setup()
+      const { unmount } = render(<Profile />)
+      const darkRadio = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      await user.click(darkRadio)
+      await user.selectOptions(languageSelect, 'French')
+      // Simulate page reload
+      unmount()
+      render(<Profile />)
+      const darkRadioAfterRemount = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
+      const languageSelectAfterRemount = screen.getByLabelText('Language') as HTMLSelectElement
+      expect(darkRadioAfterRemount.checked).toBe(true)
+      expect(languageSelectAfterRemount.value).toBe('French')
+    })
+  })
+
+  describe('Settings - Multiple Changes', () => {
+    it('handles multiple theme changes and preserves latest', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const lightRadio = screen.getByRole('radio', { name: 'Light' }) as HTMLInputElement
+      const darkRadio = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
+      // Change to dark
+      await user.click(darkRadio)
+      expect(localStorage.getItem('settings')).toContain('"theme":"dark"')
+      // Change back to light
+      await user.click(lightRadio)
+      expect(localStorage.getItem('settings')).toContain('"theme":"light"')
+    })
+
+    it('handles multiple language changes and preserves latest', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      // Change to Spanish
+      await user.selectOptions(languageSelect, 'Spanish')
+      expect(localStorage.getItem('settings')).toContain('"language":"Spanish"')
+      // Change to French
+      await user.selectOptions(languageSelect, 'French')
+      expect(localStorage.getItem('settings')).toContain('"language":"French"')
+      // Change to German
+      await user.selectOptions(languageSelect, 'German')
+      expect(localStorage.getItem('settings')).toContain('"language":"German"')
+    })
+
+    it('handles rapid successive changes to theme and language', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const darkRadio = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      // Rapid changes
+      await user.click(darkRadio)
+      await user.selectOptions(languageSelect, 'Spanish')
+      await user.selectOptions(languageSelect, 'French')
+      // Verify final state
+      const stored = localStorage.getItem('settings')
+      const parsed = JSON.parse(stored!)
+      expect(parsed.theme).toBe('dark')
+      expect(parsed.language).toBe('French')
+    })
+  })
 })

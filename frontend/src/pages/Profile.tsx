@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { validateProfileForm } from '../utils/validation'
 import type { ValidationError } from '../utils/validation'
-import { getProfile, setProfile } from '../utils/storage'
+import { getProfile, setProfile, getSettings, setSettings } from '../utils/storage'
 
 type Theme = 'light' | 'dark'
 
@@ -14,8 +14,8 @@ export default function Profile() {
   const [name, setName] = useState(() => getProfile()?.name ?? '')
   const [email, setEmail] = useState(() => getProfile()?.email ?? '')
   const [bio, setBio] = useState(() => getProfile()?.bio ?? '')
-  const [theme, setTheme] = useState<Theme>('light')
-  const [language, setLanguage] = useState<Language>('English')
+  const [theme, setTheme] = useState<Theme>(() => getSettings()?.theme ?? 'light')
+  const [language, setLanguage] = useState<Language>(() => (getSettings()?.language as Language) ?? 'English')
   const [errors, setErrors] = useState<ValidationError>({})
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,7 +154,11 @@ export default function Profile() {
                       type="radio"
                       value="light"
                       checked={theme === 'light'}
-                      onChange={(e) => setTheme(e.target.value as Theme)}
+                      onChange={(e) => {
+                        const newTheme = e.target.value as Theme
+                        setTheme(newTheme)
+                        setSettings({ theme: newTheme, language })
+                      }}
                       className="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                     <label htmlFor="theme-light" className="ml-3 block text-sm font-medium text-gray-900">
@@ -168,7 +172,11 @@ export default function Profile() {
                       type="radio"
                       value="dark"
                       checked={theme === 'dark'}
-                      onChange={(e) => setTheme(e.target.value as Theme)}
+                      onChange={(e) => {
+                        const newTheme = e.target.value as Theme
+                        setTheme(newTheme)
+                        setSettings({ theme: newTheme, language })
+                      }}
                       className="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                     <label htmlFor="theme-dark" className="ml-3 block text-sm font-medium text-gray-900">
@@ -187,7 +195,11 @@ export default function Profile() {
               <select
                 id="language"
                 value={language}
-                onChange={(e) => setLanguage(e.target.value as Language)}
+                onChange={(e) => {
+                  const newLanguage = e.target.value as Language
+                  setLanguage(newLanguage)
+                  setSettings({ theme, language: newLanguage })
+                }}
                 className="mt-2 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               >
                 {LANGUAGE_OPTIONS.map((lang) => (

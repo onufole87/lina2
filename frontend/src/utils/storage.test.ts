@@ -1,4 +1,4 @@
-import { getProfile, setProfile } from './storage'
+import { getProfile, setProfile, getSettings, setSettings } from './storage'
 
 describe('Storage utility', () => {
   beforeEach(() => {
@@ -83,6 +83,95 @@ describe('Storage utility', () => {
       const profile = { name: 'John', email: 'john@example.com', bio: 'Bio' }
       // Should not throw
       expect(() => setProfile(profile)).not.toThrow()
+      Storage.prototype.setItem = originalSetItem
+    })
+  })
+
+  describe('getSettings', () => {
+    it('returns null when localStorage is empty', () => {
+      expect(getSettings()).toBeNull()
+    })
+
+    it('returns null when settings key does not exist', () => {
+      localStorage.setItem('other-key', 'value')
+      expect(getSettings()).toBeNull()
+    })
+
+    it('returns null when stored data is not valid JSON', () => {
+      localStorage.setItem('settings', 'invalid json {')
+      expect(getSettings()).toBeNull()
+    })
+
+    it('returns null when stored data is missing required fields', () => {
+      localStorage.setItem('settings', JSON.stringify({ theme: 'light' }))
+      expect(getSettings()).toBeNull()
+    })
+
+    it('returns null when stored data has invalid theme value', () => {
+      localStorage.setItem('settings', JSON.stringify({ theme: 'invalid', language: 'English' }))
+      expect(getSettings()).toBeNull()
+    })
+
+    it('returns null when stored data has wrong field types', () => {
+      localStorage.setItem('settings', JSON.stringify({ theme: 'light', language: 123 }))
+      expect(getSettings()).toBeNull()
+    })
+
+    it('returns settings object when valid light theme data is stored', () => {
+      const settings = { theme: 'light' as const, language: 'English' }
+      localStorage.setItem('settings', JSON.stringify(settings))
+      expect(getSettings()).toEqual(settings)
+    })
+
+    it('returns settings object when valid dark theme data is stored', () => {
+      const settings = { theme: 'dark' as const, language: 'Spanish' }
+      localStorage.setItem('settings', JSON.stringify(settings))
+      expect(getSettings()).toEqual(settings)
+    })
+
+    it('returns settings with different language options', () => {
+      const settings = { theme: 'light' as const, language: 'French' }
+      localStorage.setItem('settings', JSON.stringify(settings))
+      expect(getSettings()).toEqual(settings)
+    })
+  })
+
+  describe('setSettings', () => {
+    it('stores settings data in localStorage', () => {
+      const settings = { theme: 'light' as const, language: 'English' }
+      setSettings(settings)
+      const stored = localStorage.getItem('settings')
+      expect(stored).toBe(JSON.stringify(settings))
+    })
+
+    it('stores settings with dark theme', () => {
+      const settings = { theme: 'dark' as const, language: 'German' }
+      setSettings(settings)
+      expect(getSettings()).toEqual(settings)
+    })
+
+    it('overwrites existing settings data', () => {
+      const settings1 = { theme: 'light' as const, language: 'English' }
+      const settings2 = { theme: 'dark' as const, language: 'Spanish' }
+      setSettings(settings1)
+      setSettings(settings2)
+      expect(getSettings()).toEqual(settings2)
+    })
+
+    it('handles settings with special language strings', () => {
+      const settings = { theme: 'light' as const, language: 'English (US)' }
+      setSettings(settings)
+      expect(getSettings()).toEqual(settings)
+    })
+
+    it('silently fails when localStorage is unavailable', () => {
+      const originalSetItem = Storage.prototype.setItem
+      Storage.prototype.setItem = (() => {
+        throw new Error('QuotaExceededError')
+      }) as typeof Storage.prototype.setItem
+      const settings = { theme: 'light' as const, language: 'English' }
+      // Should not throw
+      expect(() => setSettings(settings)).not.toThrow()
       Storage.prototype.setItem = originalSetItem
     })
   })

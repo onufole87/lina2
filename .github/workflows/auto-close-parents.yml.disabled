@@ -1,0 +1,74 @@
+name: auto-close-parents
+
+on:
+  issues:
+    types:
+      - closed
+
+jobs:
+  auto-close-parents:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    timeout-minutes: 5
+
+    steps:
+      - name: Check if closed issue is Eng Subtask or Arch Task
+        id: check_type
+        run: |
+          LABELS=$(gh issue view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json labels --jq '.labels[].name')
+          if echo "$LABELS" | grep -q "type/eng-subtask"; then
+            echo "type=eng-subtask" >> $GITHUB_OUTPUT
+          elif echo "$LABELS" | grep -q "type/arch-task"; then
+            echo "type=arch-task" >> $GITHUB_OUTPUT
+          else
+            echo "type=other" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install gh-sub-issue extension
+        if: steps.check_type.outputs.type != 'other'
+        run: gh extension install yahsan2/gh-sub-issue || gh extension upgrade gh-sub-issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auto-close parent Arch Task if all Eng Subtasks are closed
+        if: steps.check_type.outputs.type == 'eng-subtask'
+        run: |
+          PARENT=$(gh sub-issue list ${{ github.event.issue.number }} --repo ${{ github.repository }} --relation parent --json parent | jq -r '.parent[0].number' 2>/dev/null)
+          [ -z "$PARENT" ] || [ "$PARENT" = "null" ] && exit 0
+          
+          CHILDREN=$(gh sub-issue list "$PARENT" --repo ${{ github.repository }} --relation children --json number | jq -r '.[].number' 2>/dev/null)
+          [ -z "$CHILDREN" ] && exit 0
+          
+          ALL_CLOSED=true
+          for CHILD in $CHILDREN; do
+            STATE=$(gh issue view "$CHILD" --repo ${{ github.repository }} --json state --jq '.state')
+            [ "$STATE" != "CLOSED" ] && ALL_CLOSED=false && break
+          done
+          
+          [ "$ALL_CLOSED" = true ] && gh issue close "$PARENT" --repo ${{ github.repository }} --reason completed \
+            --comment "Auto-closed: All Eng Subtasks merged."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auto-close parent Story if all Arch Tasks are closed
+        if: steps.check_type.outputs.type == 'arch-task'
+        run: |
+          PARENT=$(gh sub-issue list ${{ github.event.issue.number }} --repo ${{ github.repository }} --relation parent --json parent | jq -r '.parent[0].number' 2>/dev/null)
+          [ -z "$PARENT" ] || [ "$PARENT" = "null" ] && exit 0
+          
+          CHILDREN=$(gh sub-issue list "$PARENT" --repo ${{ github.repository }} --relation children --json number | jq -r '.[].number' 2>/dev/null)
+          [ -z "$CHILDREN" ] && exit 0
+          
+          ALL_CLOSED=true
+          for CHILD in $CHILDREN; do
+            STATE=$(gh issue view "$CHILD" --repo ${{ github.repository }} --json state --jq '.state')
+            [ "$STATE" != "CLOSED" ] && ALL_CLOSED=false && break
+          done
+          
+          [ "$ALL_CLOSED" = true ] && gh issue close "$PARENT" --repo ${{ github.repository }} --reason completed \
+            --comment "Auto-closed: All Arch Tasks delivered."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

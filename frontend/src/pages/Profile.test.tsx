@@ -45,19 +45,73 @@ describe('Profile Component', () => {
       expect(screen.getByText('Profile Information')).toBeInTheDocument()
     })
 
-    it('renders Settings section placeholder', () => {
+    it('renders Settings section', () => {
       render(<Profile />)
       expect(screen.getByText('Settings')).toBeInTheDocument()
     })
 
-    it('renders theme preference placeholder in settings section', () => {
+    it('renders theme selector with both options', () => {
       render(<Profile />)
-      expect(screen.getByText(/Theme preference selector/i)).toBeInTheDocument()
+      expect(screen.getByLabelText('Light')).toBeInTheDocument()
+      expect(screen.getByLabelText('Dark')).toBeInTheDocument()
     })
 
     it('renders language preference placeholder in settings section', () => {
       render(<Profile />)
       expect(screen.getByText(/Language preference selector/i)).toBeInTheDocument()
+    })
+
+    it('renders theme selector with light option selected by default', () => {
+      render(<Profile />)
+      const lightRadio = screen.getByRole('radio', { name: 'Light' }) as HTMLInputElement
+      expect(lightRadio.checked).toBe(true)
+    })
+  })
+
+  describe('Theme Selector - Interaction', () => {
+    it('allows user to select dark theme', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const darkRadio = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
+      expect(darkRadio.checked).toBe(false)
+      await user.click(darkRadio)
+      expect(darkRadio.checked).toBe(true)
+    })
+
+    it('allows user to switch from light to dark theme', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const lightRadio = screen.getByRole('radio', { name: 'Light' }) as HTMLInputElement
+      const darkRadio = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
+      expect(lightRadio.checked).toBe(true)
+      expect(darkRadio.checked).toBe(false)
+      await user.click(darkRadio)
+      expect(lightRadio.checked).toBe(false)
+      expect(darkRadio.checked).toBe(true)
+    })
+
+    it('allows user to switch from dark back to light theme', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const lightRadio = screen.getByRole('radio', { name: 'Light' }) as HTMLInputElement
+      const darkRadio = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
+      // First switch to dark
+      await user.click(darkRadio)
+      expect(darkRadio.checked).toBe(true)
+      // Then switch back to light
+      await user.click(lightRadio)
+      expect(lightRadio.checked).toBe(true)
+      expect(darkRadio.checked).toBe(false)
+    })
+
+    it('theme selector updates internal state when clicked', async () => {
+      const user = userEvent.setup()
+      const { rerender } = render(<Profile />)
+      const darkRadio = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
+      await user.click(darkRadio)
+      rerender(<Profile />)
+      const darkRadioAfter = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
+      expect(darkRadioAfter.checked).toBe(true)
     })
   })
 

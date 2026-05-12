@@ -5,10 +5,13 @@ import { validateProfileForm } from '../utils/validation'
 import type { ValidationError } from '../utils/validation'
 import { getProfile, setProfile } from '../utils/storage'
 
+type Theme = 'light' | 'dark'
+
 export default function Profile() {
   const [name, setName] = useState(() => getProfile()?.name ?? '')
   const [email, setEmail] = useState(() => getProfile()?.email ?? '')
   const [bio, setBio] = useState(() => getProfile()?.bio ?? '')
+  const [theme, setTheme] = useState<Theme>('light')
   const [errors, setErrors] = useState<ValidationError>({})
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -132,14 +135,44 @@ export default function Profile() {
           </p>
 
           <div className="mt-6 space-y-6">
-            {/* Theme Preference Placeholder */}
+            {/* Theme Preference */}
             <div>
-              <label htmlFor="theme" className="block text-sm font-medium text-gray-900">
+              <label className="block text-sm font-medium text-gray-900 mb-3">
                 Theme
               </label>
-              <div id="theme-placeholder" className="mt-2 text-gray-500 text-sm">
-                Theme preference selector (to be implemented)
-              </div>
+              <fieldset className="mt-2">
+                <legend className="sr-only">Theme preference</legend>
+                <div className="space-y-3">
+                  <div className="flex items-center">
+                    <input
+                      id="theme-light"
+                      name="theme"
+                      type="radio"
+                      value="light"
+                      checked={theme === 'light'}
+                      onChange={(e) => setTheme(e.target.value as Theme)}
+                      className="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="theme-light" className="ml-3 block text-sm font-medium text-gray-900">
+                      Light
+                    </label>
+                  </div>
+                  <div className="flex items-center">
+                    <input
+                      id="theme-dark"
+                      name="theme"
+                      type="radio"
+                      value="dark"
+                      checked={theme === 'dark'}
+                      onChange={(e) => setTheme(e.target.value as Theme)}
+                      className="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="theme-dark" className="ml-3 block text-sm font-medium text-gray-900">
+                      Dark
+                    </label>
+                  </div>
+                </div>
+              </fieldset>
             </div>
 
             {/* Language Preference Placeholder */}

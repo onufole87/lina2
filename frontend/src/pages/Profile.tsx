@@ -7,11 +7,15 @@ import { getProfile, setProfile } from '../utils/storage'
 
 type Theme = 'light' | 'dark'
 
+const LANGUAGE_OPTIONS = ['English', 'Spanish', 'French', 'German'] as const
+type Language = typeof LANGUAGE_OPTIONS[number]
+
 export default function Profile() {
   const [name, setName] = useState(() => getProfile()?.name ?? '')
   const [email, setEmail] = useState(() => getProfile()?.email ?? '')
   const [bio, setBio] = useState(() => getProfile()?.bio ?? '')
   const [theme, setTheme] = useState<Theme>('light')
+  const [language, setLanguage] = useState<Language>('English')
   const [errors, setErrors] = useState<ValidationError>({})
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -175,14 +179,23 @@ export default function Profile() {
               </fieldset>
             </div>
 
-            {/* Language Preference Placeholder */}
+            {/* Language Preference */}
             <div>
               <label htmlFor="language" className="block text-sm font-medium text-gray-900">
                 Language
               </label>
-              <div id="language-placeholder" className="mt-2 text-gray-500 text-sm">
-                Language preference selector (to be implemented)
-              </div>
+              <select
+                id="language"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as Language)}
+                className="mt-2 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              >
+                {LANGUAGE_OPTIONS.map((lang) => (
+                  <option key={lang} value={lang}>
+                    {lang}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </section>

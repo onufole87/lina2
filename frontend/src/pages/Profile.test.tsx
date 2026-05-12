@@ -56,9 +56,26 @@ describe('Profile Component', () => {
       expect(screen.getByLabelText('Dark')).toBeInTheDocument()
     })
 
-    it('renders language preference placeholder in settings section', () => {
+    it('renders language dropdown in settings section', () => {
       render(<Profile />)
-      expect(screen.getByText(/Language preference selector/i)).toBeInTheDocument()
+      expect(screen.getByLabelText('Language')).toBeInTheDocument()
+    })
+
+    it('renders language dropdown with all language options', () => {
+      render(<Profile />)
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      expect(languageSelect).toBeInTheDocument()
+      expect(languageSelect.options.length).toBe(4)
+      expect(languageSelect.options[0].text).toBe('English')
+      expect(languageSelect.options[1].text).toBe('Spanish')
+      expect(languageSelect.options[2].text).toBe('French')
+      expect(languageSelect.options[3].text).toBe('German')
+    })
+
+    it('renders language dropdown with English selected by default', () => {
+      render(<Profile />)
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      expect(languageSelect.value).toBe('English')
     })
 
     it('renders theme selector with light option selected by default', () => {
@@ -112,6 +129,69 @@ describe('Profile Component', () => {
       rerender(<Profile />)
       const darkRadioAfter = screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement
       expect(darkRadioAfter.checked).toBe(true)
+    })
+  })
+
+  describe('Language Selector - Interaction', () => {
+    it('allows user to select Spanish language', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      expect(languageSelect.value).toBe('English')
+      await user.selectOptions(languageSelect, 'Spanish')
+      expect(languageSelect.value).toBe('Spanish')
+    })
+
+    it('allows user to select French language', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      await user.selectOptions(languageSelect, 'French')
+      expect(languageSelect.value).toBe('French')
+    })
+
+    it('allows user to select German language', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      await user.selectOptions(languageSelect, 'German')
+      expect(languageSelect.value).toBe('German')
+    })
+
+    it('allows user to switch between different languages', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      expect(languageSelect.value).toBe('English')
+      await user.selectOptions(languageSelect, 'Spanish')
+      expect(languageSelect.value).toBe('Spanish')
+      await user.selectOptions(languageSelect, 'French')
+      expect(languageSelect.value).toBe('French')
+      await user.selectOptions(languageSelect, 'English')
+      expect(languageSelect.value).toBe('English')
+    })
+
+    it('language selector updates component state when selection changes', async () => {
+      const user = userEvent.setup()
+      const { rerender } = render(<Profile />)
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      await user.selectOptions(languageSelect, 'German')
+      rerender(<Profile />)
+      const languageSelectAfter = screen.getByLabelText('Language') as HTMLSelectElement
+      expect(languageSelectAfter.value).toBe('German')
+    })
+
+    it('maintains selected language when switching between other selections', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const languageSelect = screen.getByLabelText('Language') as HTMLSelectElement
+      await user.selectOptions(languageSelect, 'French')
+      expect(languageSelect.value).toBe('French')
+      // Select another option and come back
+      await user.selectOptions(languageSelect, 'Spanish')
+      expect(languageSelect.value).toBe('Spanish')
+      await user.selectOptions(languageSelect, 'French')
+      expect(languageSelect.value).toBe('French')
     })
   })
 

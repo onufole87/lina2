@@ -209,6 +209,17 @@ export default function Profile() {
                 ))}
               </select>
             </div>
+
+            {/* Delete Account */}
+            <div className="border-t border-gray-200 pt-6">
+              <button
+                type="button"
+                onClick={() => {}}
+                className="inline-flex justify-center py-2 px-4 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Delete Account
+              </button>
+            </div>
           </div>
         </section>
       </div>

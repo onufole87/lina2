@@ -832,4 +832,60 @@ describe('Profile Component', () => {
       expect(parsed.language).toBe('French')
     })
   })
+
+  describe('Delete Account Button', () => {
+    it('renders the Delete Account button in settings section', () => {
+      render(<Profile />)
+      expect(screen.getByRole('button', { name: 'Delete Account' })).toBeInTheDocument()
+    })
+
+    it('Delete Account button does nothing when clicked', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const deleteButton = screen.getByRole('button', { name: 'Delete Account' })
+      // Click the button
+      await user.click(deleteButton)
+      // Verify no side effects: button should still be in document
+      expect(screen.getByRole('button', { name: 'Delete Account' })).toBeInTheDocument()
+      // Verify localStorage is unchanged
+      expect(localStorage.getItem('profile')).toBeNull()
+      expect(localStorage.getItem('settings')).toBeNull()
+    })
+
+    it('Delete Account button click does not cause navigation', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const deleteButton = screen.getByRole('button', { name: 'Delete Account' })
+      await user.click(deleteButton)
+      // Verify page structure is unchanged
+      expect(screen.getByText('Profile')).toBeInTheDocument()
+      expect(screen.getByText('Settings')).toBeInTheDocument()
+    })
+
+    it('Delete Account button click does not cause state change', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const nameInput = screen.getByLabelText('Name') as HTMLInputElement
+      await user.type(nameInput, 'John Doe')
+      expect(nameInput.value).toBe('John Doe')
+      // Click delete button
+      const deleteButton = screen.getByRole('button', { name: 'Delete Account' })
+      await user.click(deleteButton)
+      // Verify form state is unchanged
+      expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('John Doe')
+    })
+
+    it('Delete Account button can be clicked multiple times without side effects', async () => {
+      const user = userEvent.setup()
+      render(<Profile />)
+      const deleteButton = screen.getByRole('button', { name: 'Delete Account' })
+      // Click multiple times
+      await user.click(deleteButton)
+      await user.click(deleteButton)
+      await user.click(deleteButton)
+      // Verify button still exists and component is unchanged
+      expect(screen.getByRole('button', { name: 'Delete Account' })).toBeInTheDocument()
+      expect(screen.getByText('Settings')).toBeInTheDocument()
+    })
+  })
 })
